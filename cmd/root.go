@@ -18,7 +18,7 @@ func completionCmd() *cobra.Command {
 
 var rootCmd = &cobra.Command{
 	Use:   "waybackshots",
-	Short: " Get screenshots of URLs stored in the Wayback Machine in a smart way",
+	Short: "Get screenshots of URLs stored in the Wayback Machine in a smart way",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("WIP!")
 	},
