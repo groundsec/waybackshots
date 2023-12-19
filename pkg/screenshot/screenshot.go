@@ -19,6 +19,10 @@ import (
 )
 
 type WaybackMachineJSON [][]string
+type URLRecordInfo struct {
+	Timestamp string
+	Digest    string
+}
 
 // fullScreenshot takes a screenshot of the entire browser viewport.
 //
@@ -32,9 +36,9 @@ func fullScreenshot(url string, quality int, res *[]byte) chromedp.Tasks {
 }
 
 // Worker function to process elements.
-func screenshotWorker(id int, url string, timestamps <-chan string, wg *sync.WaitGroup) {
-	for timestamp := range timestamps {
-		fmt.Printf("Worker %d processing element: %s\n", id, timestamp)
+func screenshotWorker(id int, url string, recordInfo <-chan URLRecordInfo, wg *sync.WaitGroup) {
+	for record := range recordInfo {
+		fmt.Printf("Worker %d processing element: %s\n", id, record.Timestamp)
 		// create context
 		ctx, cancel := chromedp.NewContext(
 			context.Background(),
@@ -43,7 +47,7 @@ func screenshotWorker(id int, url string, timestamps <-chan string, wg *sync.Wai
 
 		// capture screenshot of an element
 		var buf []byte
-		waybackUrl := fmt.Sprintf("http://web.archive.org/web/%s/%s", timestamp, url)
+		waybackUrl := fmt.Sprintf("http://web.archive.org/web/%s/%s", record.Timestamp, url)
 		// capture entire browser viewport, returning png with quality=90
 		if err := chromedp.Run(ctx, fullScreenshot(waybackUrl, 90, &buf)); err != nil {
 			cancel()
@@ -55,8 +59,8 @@ func screenshotWorker(id int, url string, timestamps <-chan string, wg *sync.Wai
 			logger.Fatal(fmt.Sprintf("Unable to obtain domain from url %s", domain))
 		}
 
-		utils.CreateFolderIfNotExist(fmt.Sprintf("waybackshots_%s/%s", domain, timestamp))
-		if err := os.WriteFile(fmt.Sprintf("waybackshots_%s/%s/%s.png", domain, timestamp, utils.SanitizeFilename(url)), buf, 0o644); err != nil {
+		utils.CreateFolderIfNotExist(fmt.Sprintf("waybackshots_%s/%s", domain, record.Timestamp))
+		if err := os.WriteFile(fmt.Sprintf("waybackshots_%s/%s/%s_%s.png", domain, record.Timestamp, utils.SanitizeFilename(url), record.Digest), buf, 0o644); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -84,28 +88,28 @@ func HandleUrl(url string, numWorkers int) {
 	}
 
 	digests := []string{}
-	timestamps := []string{}
+	recordData := []URLRecordInfo{}
 	for i, element := range jsonResponse {
 		if i != 0 && !slices.Contains(digests, element[1]) {
 			digests = append(digests, element[1])
-			timestamps = append(timestamps, element[0])
+			recordData = append(recordData, URLRecordInfo{Timestamp: element[0], Digest: element[1]})
 		}
 	}
 
 	var wg sync.WaitGroup
-	timestampsChan := make(chan string, len(jsonResponse))
+	recordDataChan := make(chan URLRecordInfo, len(recordData))
 
 	// Start workers.
 	for w := 1; w <= numWorkers; w++ {
 		wg.Add(1)
-		go screenshotWorker(w, url, timestampsChan, &wg)
+		go screenshotWorker(w, url, recordDataChan, &wg)
 	}
 
 	// Distribute work.
-	for _, timestamp := range timestamps {
-		timestampsChan <- timestamp
+	for _, record := range recordData {
+		recordDataChan <- record
 	}
-	close(timestampsChan)
+	close(recordDataChan)
 
 	// Wait for all workers to finish.
 	wg.Wait()
