@@ -21,10 +21,6 @@
 go.work
 
 # Custom
-waybackshots
-resume.cfg
-tmp
-static
 .DS_Store
-dist/
-output/
+waybackshots
+waybackshots_*

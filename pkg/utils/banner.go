@@ -9,6 +9,7 @@ func Banner(version string) {
 | | | | .'| | | . | .'|  _| '_|_ -|   | . |  _|_ -|
 |_____|__,|_  |___|__,|___|_,_|___|_|_|___|_| |___|
           |___|                                    
+
 v%s - https://github.com/groundsec/waybackshots
 
 `
