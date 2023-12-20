@@ -19,7 +19,7 @@ builds:
       - goos: windows
         goarch: "arm"
     binary: "{{ .ProjectName }}"
-    main: secbutler.go
+    main: waybackshots.go
 
 archives:
   - format: zip

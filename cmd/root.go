@@ -18,9 +18,10 @@ func completionCmd() *cobra.Command {
 }
 
 var (
-	url     string
-	file    string
-	verbose bool
+	url       string
+	file      string
+	outputDir string
+	verbose   bool
 )
 
 var rootCmd = &cobra.Command{
@@ -33,9 +34,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		if url != "" {
-			screenshot.HandleUrl(url)
+			screenshot.HandleUrl(url, outputDir)
 		} else if file != "" {
-			screenshot.HandleFile(file)
+			screenshot.HandleFile(file, outputDir)
 		} else {
 			fmt.Println("Please specify either -u/--url or -f/--file.")
 		}
@@ -48,6 +49,7 @@ func init() {
 	rootCmd.AddCommand(completion)
 	rootCmd.PersistentFlags().StringVarP(&url, "url", "u", "", "URL to screenshot")
 	rootCmd.PersistentFlags().StringVarP(&file, "file", "f", "", "File with URLs to screenshot")
+	rootCmd.PersistentFlags().StringVarP(&outputDir, "output", "o", ".", "Output dir")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose mode")
 	if verbose {
 		logger.SetLevel(logrus.InfoLevel)

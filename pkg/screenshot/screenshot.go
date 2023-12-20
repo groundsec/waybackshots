@@ -53,7 +53,7 @@ func fullScreenshot(urlStr string, quality int, res *[]byte) chromedp.Tasks {
 }
 
 // Worker function to process elements.
-func screenshotWorker(url string, record URLRecordInfo, userAgent string) bool {
+func screenshotWorker(url string, record URLRecordInfo, userAgent string, outputDir string) bool {
 	waybackUrl := fmt.Sprintf("https://web.archive.org/web/%sid_/%s", record.Timestamp, url)
 	logger.Info(fmt.Sprintf("Processing element: %s\n", waybackUrl))
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
@@ -82,16 +82,19 @@ func screenshotWorker(url string, record URLRecordInfo, userAgent string) bool {
 	if err != nil {
 		logger.Fatal(fmt.Sprintf("Unable to obtain domain from url %s", domain))
 	}
-
-	utils.CreateFolderIfNotExist(fmt.Sprintf("waybackshots_%s/%s", domain, record.Timestamp))
-	if err := os.WriteFile(fmt.Sprintf("waybackshots_%s/%s/%s_%s.png", domain, record.Timestamp, utils.SanitizeFilename(url), record.Digest), buf, 0o644); err != nil {
+	screenshotDir := fmt.Sprintf("%s/waybackshots_%s/%s", outputDir, domain, record.Timestamp)
+	err = utils.CreateFolderIfNotExist(screenshotDir)
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("Unable to create folder %s", screenshotDir))
+	}
+	if err := os.WriteFile(fmt.Sprintf("%s/%s_%s.png", screenshotDir, utils.SanitizeFilename(url), record.Digest), buf, 0o644); err != nil {
 		log.Fatal(err)
 	}
 	return true
 }
 
 // Fetches and processes data in parallel using worker pool.
-func HandleUrl(urlString string) {
+func HandleUrl(urlString string, outputDir string) {
 	if !utils.IsURL(urlString) {
 		logger.Error(fmt.Sprintf("%s is not a URL", urlString))
 		return
@@ -148,7 +151,7 @@ func HandleUrl(urlString string) {
 
 	for _, record := range recordData {
 		for {
-			screenshotCompleted := screenshotWorker(urlString, record, userAgent)
+			screenshotCompleted := screenshotWorker(urlString, record, userAgent, outputDir)
 			if screenshotCompleted {
 				connectionErrors = 0
 				time.Sleep(time.Duration(defaultTimeout) * time.Second)
@@ -163,7 +166,7 @@ func HandleUrl(urlString string) {
 	fmt.Printf("Wayback Machine screenshots completed for URL %s\n", urlString)
 }
 
-func handleDomain(domain string, urlStrings []string) {
+func handleDomain(domain string, urlStrings []string, outputDir string) {
 	userAgent := utils.UserAgents[rand.Intn(len(utils.UserAgents))]
 
 	/*
@@ -216,7 +219,7 @@ func handleDomain(domain string, urlStrings []string) {
 			}
 		}
 		for _, record := range recordData {
-			screenshotCompleted := screenshotWorker(urlString, record, userAgent)
+			screenshotCompleted := screenshotWorker(urlString, record, userAgent, outputDir)
 			if screenshotCompleted {
 				connectionErrors = 0
 				time.Sleep(time.Duration(defaultTimeout) * time.Second)
@@ -230,7 +233,7 @@ func handleDomain(domain string, urlStrings []string) {
 	}
 }
 
-func HandleFile(file string) {
+func HandleFile(file string, outputDir string) {
 	f, err := os.Open(file)
 	if err != nil {
 		logger.Fatal("Error opening file:", err)
@@ -259,7 +262,7 @@ func HandleFile(file string) {
 		domainURLs[domain] = append(domainURLs[domain], lineStr)
 	}
 	for domain, values := range domainURLs {
-		handleDomain(domain, values)
+		handleDomain(domain, values, outputDir)
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Fatal("Error reading file:", err)
