@@ -18,9 +18,9 @@ func completionCmd() *cobra.Command {
 }
 
 var (
-	threads int
 	url     string
 	file    string
+	verbose bool
 )
 
 var rootCmd = &cobra.Command{
@@ -33,9 +33,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		if url != "" {
-			screenshot.HandleUrl(url, threads)
+			screenshot.HandleUrl(url)
 		} else if file != "" {
-			screenshot.HandleFile(file, threads)
+			screenshot.HandleFile(file)
 		} else {
 			fmt.Println("Please specify either -u/--url or -f/--file.")
 		}
@@ -45,11 +45,15 @@ var rootCmd = &cobra.Command{
 func init() {
 	completion := completionCmd()
 	completion.Hidden = true
-	logger.SetLevel(logrus.InfoLevel)
 	rootCmd.AddCommand(completion)
-	rootCmd.PersistentFlags().IntVarP(&threads, "threads", "t", 5, "number of workers to use")
-	rootCmd.PersistentFlags().StringVarP(&url, "url", "u", "", "URL to analyze")
-	rootCmd.PersistentFlags().StringVarP(&file, "file", "f", "", "file to read")
+	rootCmd.PersistentFlags().StringVarP(&url, "url", "u", "", "URL to screenshot")
+	rootCmd.PersistentFlags().StringVarP(&file, "file", "f", "", "File with URLs to screenshot")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose mode")
+	if verbose {
+		logger.SetLevel(logrus.InfoLevel)
+	} else {
+		logger.SetLevel(logrus.ErrorLevel)
+	}
 }
 
 func Execute() {
